@@ -14,12 +14,19 @@ import subprocess
 import discord
 from discord import app_commands
 from dotenv import load_dotenv
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaInMemoryUpload
 
 load_dotenv()
 
 ROOT = Path(__file__).resolve().parent
 TEMPLATE_PATH = ROOT / "KHK Excuse Form.docx"
 GUILD_ID_RAW = os.environ.get("DISCORD_GUILD_ID")
+GOOGLE_CREDENTIALS_PATH = os.environ.get("GOOGLE_CREDENTIALS_PATH")
+GOOGLE_DRIVE_FOLDER_ID = os.environ.get("GOOGLE_DRIVE_FOLDER_ID")
+
+_DRIVE_SCOPES = ["https://www.googleapis.com/auth/drive.file"]
 
 if not TEMPLATE_PATH.exists():
     sys.exit(f"Template not found at {TEMPLATE_PATH}")
@@ -75,6 +82,20 @@ def build_excuse_docx(nickname: str, body: str, today: date) -> bytes:
     return dst.getvalue()
 
 
+def upload_to_drive(pdf_bytes: bytes, filename: str) -> None:
+    if not GOOGLE_CREDENTIALS_PATH or not GOOGLE_DRIVE_FOLDER_ID:
+        return
+    creds = service_account.Credentials.from_service_account_file(
+        GOOGLE_CREDENTIALS_PATH, scopes=_DRIVE_SCOPES
+    )
+    service = build("drive", "v3", credentials=creds)
+    media = MediaInMemoryUpload(pdf_bytes, mimetype="application/pdf")
+    service.files().create(
+        body={"name": filename, "parents": [GOOGLE_DRIVE_FOLDER_ID]},
+        media_body=media,
+    ).execute()
+
+
 def build_excuse_pdf(nickname: str, body: str, today: date) -> bytes:
     docx_bytes = build_excuse_docx(nickname, body, today)
     with tempfile.TemporaryDirectory() as tmp:
@@ -106,6 +127,7 @@ async def excuse(interaction: discord.Interaction, body: str):
     today = date.today()
     pdf_bytes = await asyncio.to_thread(build_excuse_pdf, nickname, body, today)
     filename = f"{_sanitize_filename(nickname)}_excuse_{today.isoformat()}.pdf"
+    await asyncio.to_thread(upload_to_drive, pdf_bytes, filename)
     attachment = discord.File(io.BytesIO(pdf_bytes), filename=filename)
     await interaction.followup.send(
         content=f"Excuse form for **{nickname}**:",
