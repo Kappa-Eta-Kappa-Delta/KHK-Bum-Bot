@@ -9,7 +9,7 @@ from datetime import date
 from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
 
-from docx2pdf import convert
+import subprocess
 
 import discord
 from discord import app_commands
@@ -79,10 +79,13 @@ def build_excuse_pdf(nickname: str, body: str, today: date) -> bytes:
     docx_bytes = build_excuse_docx(nickname, body, today)
     with tempfile.TemporaryDirectory() as tmp:
         docx_path = Path(tmp) / "excuse.docx"
-        pdf_path = Path(tmp) / "excuse.pdf"
         docx_path.write_bytes(docx_bytes)
-        convert(str(docx_path), str(pdf_path))
-        return pdf_path.read_bytes()
+        subprocess.run(
+            ["libreoffice", "--headless", "--convert-to", "pdf", "--outdir", tmp, str(docx_path)],
+            check=True,
+            timeout=120,
+        )
+        return (Path(tmp) / "excuse.pdf").read_bytes()
 
 
 intents = discord.Intents.default()
