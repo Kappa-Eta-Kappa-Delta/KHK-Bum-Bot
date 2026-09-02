@@ -1,3 +1,4 @@
+import asyncio
 import io
 import os
 import re
@@ -97,12 +98,13 @@ def _display_name(interaction: discord.Interaction) -> str:
 @tree.command(name="excuse", description="Generate a KHK excuse form addressed to the chapter.")
 @app_commands.describe(body="The body text of the excuse form.")
 async def excuse(interaction: discord.Interaction, body: str):
+    await interaction.response.defer()
     nickname = _display_name(interaction)
     today = date.today()
-    pdf_bytes = build_excuse_pdf(nickname, body, today)
+    pdf_bytes = await asyncio.to_thread(build_excuse_pdf, nickname, body, today)
     filename = f"{_sanitize_filename(nickname)}_excuse_{today.isoformat()}.pdf"
     attachment = discord.File(io.BytesIO(pdf_bytes), filename=filename)
-    await interaction.response.send_message(
+    await interaction.followup.send(
         content=f"Excuse form for **{nickname}**:",
         file=attachment,
     )
