@@ -50,8 +50,14 @@ def build_excuse_docx(nickname: str, body: str, today: date) -> bytes:
                     f"<w:t>{xml_escape(date_str)}</w:t>",
                 )
                 xml = xml.replace(
-                    "<w:t>xyz</w:t>",
-                    f'<w:t xml:space="preserve">{xml_escape(body_clean)}</w:t>',
+                    '<w:t xml:space="preserve">I cannot attend meeting today for reasons </w:t></w:r>'
+                    '<w:proofErr w:type="spellStart"/>'
+                    '<w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr>'
+                    '<w:t>xyz</w:t></w:r>'
+                    '<w:proofErr w:type="spellEnd"/>'
+                    '<w:r><w:rPr><w:rFonts w:ascii="Arial" w:eastAsia="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr>'
+                    '<w:t>.</w:t></w:r>',
+                    f'<w:t xml:space="preserve">{xml_escape(body_clean)}</w:t></w:r>',
                 )
                 xml = xml.replace(
                     "<w:t>[insert member name]</w:t>",
@@ -76,7 +82,7 @@ def _display_name(interaction: discord.Interaction) -> str:
 
 
 @tree.command(name="excuse", description="Generate a KHK excuse form addressed to the chapter.")
-@app_commands.describe(body="Fill this out for the general body of your letter.")
+@app_commands.describe(body="The body text of the excuse form.")
 async def excuse(interaction: discord.Interaction, body: str):
     nickname = _display_name(interaction)
     today = date.today()
