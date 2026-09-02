@@ -76,7 +76,7 @@ def _display_name(interaction: discord.Interaction) -> str:
 
 
 @tree.command(name="excuse", description="Generate a KHK excuse form addressed to the chapter.")
-@app_commands.describe(body="The reason you cannot attend (fills in the 'for reasons ___' blank).")
+@app_commands.describe(body="Fill this out for the general body of your letter.")
 async def excuse(interaction: discord.Interaction, body: str):
     nickname = _display_name(interaction)
     today = date.today()
