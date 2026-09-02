@@ -2,10 +2,13 @@ import io
 import os
 import re
 import sys
+import tempfile
 import zipfile
 from datetime import date
 from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
+
+from docx2pdf import convert
 
 import discord
 from discord import app_commands
@@ -71,6 +74,16 @@ def build_excuse_docx(nickname: str, body: str, today: date) -> bytes:
     return dst.getvalue()
 
 
+def build_excuse_pdf(nickname: str, body: str, today: date) -> bytes:
+    docx_bytes = build_excuse_docx(nickname, body, today)
+    with tempfile.TemporaryDirectory() as tmp:
+        docx_path = Path(tmp) / "excuse.docx"
+        pdf_path = Path(tmp) / "excuse.pdf"
+        docx_path.write_bytes(docx_bytes)
+        convert(str(docx_path), str(pdf_path))
+        return pdf_path.read_bytes()
+
+
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
@@ -86,9 +99,9 @@ def _display_name(interaction: discord.Interaction) -> str:
 async def excuse(interaction: discord.Interaction, body: str):
     nickname = _display_name(interaction)
     today = date.today()
-    docx_bytes = build_excuse_docx(nickname, body, today)
-    filename = f"{_sanitize_filename(nickname)}_excuse_{today.isoformat()}.docx"
-    attachment = discord.File(io.BytesIO(docx_bytes), filename=filename)
+    pdf_bytes = build_excuse_pdf(nickname, body, today)
+    filename = f"{_sanitize_filename(nickname)}_excuse_{today.isoformat()}.pdf"
+    attachment = discord.File(io.BytesIO(pdf_bytes), filename=filename)
     await interaction.response.send_message(
         content=f"Excuse form for **{nickname}**:",
         file=attachment,
